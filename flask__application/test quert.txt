@@ -1,0 +1,37 @@
+select 
+		concat(pc.first_name,' ',pc.last_name) as champion_name,
+		c.id as champion_id, c.max_champion_id, c.city, c.prospective_champion_id, c.champion_status, c.created_at 
+		from champion_service.champions c 
+		join champion_service.prospective_champions pc on c.prospective_champion_id::uuid = pc.id::uuid 
+
+
+select 
+  v.id as vehicle_id, 
+  v.plate_number, 
+  s."name" as status, 
+  vt."name" as vehicle_type, 
+  m."name" as model_name, v.max_vehicle_id
+from vehicle_service.vehicles v
+left join vehicle_service.vehicle_types vt on v.vehicle_type_id = vt.id
+join configuration_service.status s on v.vehicle_status_id = s.id 
+join vehicle_service.models m on v.model_id = m.id
+
+
+SELECT 
+	concat(pc.first_name, ' ', pc.last_name) as fullname, 
+	oec.channel, 
+	c."name" as country, 
+	oa."name",
+		case 
+			when oa.name = 'okada' then 'motorcycle'
+			when oa.name = 'keke' then 'tricycle'
+			else 'other'
+end  as vehicle_asset
+
+FROM champion_service.prospective_champions pc
+LEFT JOIN champion_service.onboarding_entry_channel oec ON pc.entry_channel_id = oec.id
+join configuration_service.countries c on pc.country_id = c.id 
+join champion_service.onboarding_assets oa on pc.asset_id = oa.id 
+
+
+ 

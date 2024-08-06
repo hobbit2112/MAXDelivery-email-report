@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User-Created Queries</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            background-color: #fffbe6; /* Light yellow background */
+            padding-top: 50px;
+        }
+        .sidebar {
+            height: 100vh;
+            background-color: #343a40;
+            padding-top: 20px;
+            position: fixed;
+        }
+        .sidebar a {
+            padding: 15px;
+            text-decoration: none;
+            font-size: 18px;
+            color: white;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #575d63;
+            color: white;
+        }
+        .main-content {
+            margin-left: 250px; /* Same as the width of the sidebar */
+            padding: 20px;
+        }
+        h1 {
+            color: #f5b800; /* Yellow color for headings */
+            margin-bottom: 20px;
+        }
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .table-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="/"><i class="fas fa-home"></i> Home</a>
+        <a href="/view_reports"><i class="fas fa-file-alt"></i> Reports</a>
+        <a href="/user_created_query"><i class="fas fa-database"></i> User-Created Queries</a>
+    </div>
+
+    <div class="main-content">
+        <h1 class="text-center">User-Created Queries</h1>
+        <div class="form-container">
+            <form id="queryForm" method="POST" action="/submit_query">
+                <div class="form-group">
+                    <label for="querySelect">Select Query:</label>
+                    <select class="form-control" id="querySelect" name="querySelect">
+                        <!-- Options to be dynamically populated -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="emailSelect">Select Emails:</label>
+                    <select class="form-control" id="emailSelect" name="emailSelect" multiple>
+                        <!-- Options to be dynamically populated -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="queryText">Edit Query:</label>
+                    <textarea class="form-control" id="queryText" name="queryText" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="emailInput">Update Emails:</label>
+                    <input type="text" class="form-control" id="emailInput" name="emailInput" placeholder="Enter emails separated by commas">
+                </div>
+                <button type="submit" class="btn btn-primary">Update & Run Query</button>
+            </form>
+        </div>
+        <div class="table-container">
+            <table id="queriesTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Query</th>
+                        <th>Email</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Table rows to be dynamically populated -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#queriesTable').DataTable({
+                paging: true,
+                searching: true,
+                ordering: true,
+                info: true
+            });
+
+            // Fetch and populate queries and emails
+            fetchQueriesAndEmails();
+        });
+
+        function fetchQueriesAndEmails() {
+            // Make an AJAX call to fetch the distinct queries and emails from the local database
+            $.ajax({
+                url: '/get_queries_and_emails',
+                method: 'GET',
+                success: function(data) {
+                    // Populate the querySelect and emailSelect elements with the data
+                    $('#querySelect').empty();
+                    $('#emailSelect').empty();
+
+                    data.queries.forEach(function(query) {
+                        $('#querySelect').append(new Option(query.text, query.id));
+                    });
+
+                    data.emails.forEach(function(email) {
+                        $('#emailSelect').append(new Option(email, email));
+                    });
+
+                    // Populate the queriesTable with the retrieved data
+                    const tableBody = $('#queriesTable tbody');
+                    tableBody.empty();
+                    data.all_queries.forEach(function(row) {
+                        tableBody.append(`
+                            <tr>
+                                <td>${row.id}</td>
+                                <td>${row.query}</td>
+                                <td>${row.email}</td>
+                                <td>${row.created_at}</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function(error) {
+                    console.error('Error fetching queries and emails:', error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

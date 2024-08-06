@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Reporting</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .table td {
+            white-space: nowrap;
+        }
+        body {
+            background-color: #fffbe6; /* Light yellow background */
+            padding-top: 50px;
+        }
+        .container {
+            max-width: 600px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #f5b800; /* Yellow color for headings */
+        }
+        .form-group label {
+            color: #333; /* Darker text for labels */
+        }
+        .btn-primary {
+            background-color: #f5b800;
+            border-color: #f5b800;
+        }
+        .btn-primary:hover {
+            background-color: #d4a000;
+            border-color: #d4a000;
+        }
+        .form-control:focus {
+            border-color: #f5b800;
+            box-shadow: 0 0 0 0.2rem rgba(245, 184, 0, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Automated Reporting</h1>
+        <form action="/submit_query" method="post">
+            <div class="form-group">
+                <label for="action">Action:</label>
+                <select class="form-control" id="action" name="action">
+                    <option value="">Select Action</option>
+                    <option value="retrieve_report">Retrieve Report</option>
+                    <option value="user_query">User Created Query</option>
+                    <option value="schedule_report">Schedule Report</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="query">SQL Query:</label>
+                <textarea class="form-control" id="query" name="query" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="email">Email(s) (comma or space separated):</label>
+                <input type="text" class="form-control" id="email" name="email">
+            </div>
+            <div class="form-group">
+                <label for="schedule_time">Schedule Time (if scheduling report):</label>
+                <input type="datetime-local" class="form-control" id="schedule_time" name="schedule_time">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Submit</button>
+        </form>
+    </div>
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+<!-- retriving reports from report database -->
+ <!-- dropdown user select query / saved -->
+  <!-- new button to update add new queries -->
+   <!-- retrieve/create/update reports (CRUD) recipients -->
+    <!-- retrieve/create/update reports (CRUD) dispacth scehdule  -->
