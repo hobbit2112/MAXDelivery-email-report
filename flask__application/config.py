@@ -1,6 +1,6 @@
 from configparser import ConfigParser
 
-def config(filename='C:/Users/ayowale.olusanya_max/Documents/python_email_automate/database.ini', section='local_postgresql'):
+def config(filename='C:/Users/ayowale.olusanya_max/Documents/python_email_automate/flask__application/database.ini', section='local_postgresql'):
     parser = ConfigParser()
     parser.read(filename)
 

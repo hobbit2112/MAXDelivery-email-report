@@ -8,26 +8,53 @@
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <style>
-        .table-wrapper {
-            overflow-x: auto;
-        }
-        .table td {
-            white-space: nowrap;
-        }
+        /* General Body Styling */
         body {
             background-color: #fffbe6; /* Light yellow background */
             padding-top: 50px;
         }
+
+        /* Sidebar Styling */
+        .sidebar {
+            height: 100vh;
+            width: 250px; /* Define a width for the sidebar */
+            background-color: #343a40;
+            padding-top: 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+        .sidebar a {
+            padding: 15px;
+            text-decoration: none;
+            font-size: 18px;
+            color: white;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #575d63;
+            color: white;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            margin-left: 250px; /* Match the sidebar width */
+            padding: 20px;
+        }
+
+
+        /* Main Container Styling */
         .container {
-            max-width: 600px;
+            margin-left: 250px; /* Offset for the fixed sidebar */
+            max-width: calc(100% - 250px); /* Adjust to fit next to sidebar */
             background: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        h1 {
-            color: #f5b800; /* Yellow color for headings */
-        }
+
+        /* Form and Button Styling */
         .form-group label {
             color: #333; /* Darker text for labels */
         }
@@ -43,45 +70,126 @@
             border-color: #f5b800;
             box-shadow: 0 0 0 0.2rem rgba(245, 184, 0, 0.25);
         }
+        .form-control {
+            border-radius: 5px; /* Rounded corners */
+            border: 1px solid #ced4da; /* Light border color */
+        }
+
+        /* Table Styling */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .table td {
+            white-space: nowrap;
+        }
+        .table-container {
+            margin-top: 20px;
+        }
+        .table thead th {
+            background-color: #f5b800; /* Match header color to the theme */
+            color: white;
+        }
+
+        /* Header Styling */
+        h1 {
+            color: #f5b800; /* Yellow color for headings */
+            margin-bottom: 20px;
+        }
+
+        /* Button Back Styling */
+        .btn-back {
+            margin-top: 20px;
+        }
+        .btn-back a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .container {
+                margin-left: 0;
+                padding: 20px;
+            }
+        }
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="text-center">Automated Reporting</h1>
-        <form action="/submit_query" method="post">
-            <div class="form-group">
-                <label for="action">Action:</label>
-                <select class="form-control" id="action" name="action">
-                    <option value="">Select Action</option>
-                    <option value="retrieve_report">Retrieve Report</option>
-                    <option value="user_query">User Created Query</option>
-                    <option value="schedule_report">Schedule Report</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="query">SQL Query:</label>
-                <textarea class="form-control" id="query" name="query" rows="4"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="email">Email(s) (comma or space separated):</label>
-                <input type="text" class="form-control" id="email" name="email">
-            </div>
-            <div class="form-group">
-                <label for="schedule_time">Schedule Time (if scheduling report):</label>
-                <input type="datetime-local" class="form-control" id="schedule_time" name="schedule_time">
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Submit</button>
-        </form>
+    <div class="sidebar">
+        <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+        <a href="{{ url_for('view_reports') }}"><i class="fas fa-file-alt"></i> Reports</a>
+        <a href="{{ url_for('query') }}"><i class="fas fa-database"></i> User-Created Queries</a>
+    </div>        
+
+    <div class="main-content">
+        <div class="container">
+            <h1 class="text-center">Automated Reporting</h1>
+            <form action="/submit_query" method="post">
+                <div class="form-group">
+                    <label for="action">Action:</label>
+                    <select class="form-control" id="action" name="action">
+                        <option value="">Select Action</option>
+                        <option value="retrieve_report">Retrieve Report</option>
+                        <option value="user_query">User Created Query</option>
+                        <option value="schedule_report">Schedule Report</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="query">SQL Query:</label>
+                    <textarea class="form-control" id="query" name="query" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email(s) (comma or space separated):</label>
+                    <input type="text" class="form-control" id="email" name="email">
+                </div>
+                <div id="scheduleFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="day">Day of the Week:</label>
+                        <select class="form-control" id="day" name="day">
+                            <option value="monday">Monday</option>
+                            <option value="tuesday">Tuesday</option>
+                            <option value="wednesday">Wednesday</option>
+                            <option value="thursday">Thursday</option>
+                            <option value="friday">Friday</option>
+                            <option value="saturday">Saturday</option>
+                            <option value="sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hour">Hour of the Day:</label>
+                        <select class="form-control" id="hour" name="hour">
+                            {% for i in range(24) %}
+                            <option value="{{ i }}">{{ i }}:00</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Submit</button>
+            </form>
+        </div>
     </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <!-- Bootstrap JS and dependencies -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#action').change(function() {
+                if ($(this).val() == 'schedule_report') {
+                    $('#scheduleFields').show();
+                } else {
+                    $('#scheduleFields').hide();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
-
-<!-- retriving reports from report database -->
- <!-- dropdown user select query / saved -->
-  <!-- new button to update add new queries -->
-   <!-- retrieve/create/update reports (CRUD) recipients -->
-    <!-- retrieve/create/update reports (CRUD) dispacth scehdule  -->

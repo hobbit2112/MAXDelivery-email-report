@@ -8,16 +8,24 @@
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!-- Custom CSS -->
     <style>
+        /* General Body Styling */
         body {
             background-color: #fffbe6; /* Light yellow background */
             padding-top: 50px;
         }
+
+        /* Sidebar Styling */
         .sidebar {
             height: 100vh;
+            width: 250px; /* Define a width for the sidebar */
             background-color: #343a40;
             padding-top: 20px;
             position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto; /* Allow scrolling if content overflows */
         }
         .sidebar a {
             padding: 15px;
@@ -30,30 +38,95 @@
             background-color: #575d63;
             color: white;
         }
+
+        /* Main Content Styling */
         .main-content {
-            margin-left: 250px; /* Same as the width of the sidebar */
+            margin-left: 250px; /* Match the sidebar width */
             padding: 20px;
         }
-        h1 {
-            color: #f5b800; /* Yellow color for headings */
-            margin-bottom: 20px;
-        }
-        .form-container {
+
+
+        /* Main Container Styling */
+        .container {
+            margin-left: 250px; /* Offset for the fixed sidebar */
+            max-width: calc(100% - 250px); /* Adjust to fit next to sidebar */
             background: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
+        /* Form and Button Styling */
+        .form-group label {
+            color: #333; /* Darker text for labels */
+        }
+        .btn-primary {
+            background-color: #f5b800;
+            border-color: #f5b800;
+        }
+        .btn-primary:hover {
+            background-color: #d4a000;
+            border-color: #d4a000;
+        }
+        .form-control:focus {
+            border-color: #f5b800;
+            box-shadow: 0 0 0 0.2rem rgba(245, 184, 0, 0.25);
+        }
+        .form-control {
+            border-radius: 5px; /* Rounded corners */
+            border: 1px solid #ced4da; /* Light border color */
+        }
+
+        /* Table Styling */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .table td {
+            white-space: nowrap;
+        }
         .table-container {
             margin-top: 20px;
         }
+        .table thead th {
+            background-color: #f5b800; /* Match header color to the theme */
+            color: white;
+        }
+
+        /* Header Styling */
+        h1 {
+            color: #f5b800; /* Yellow color for headings */
+            margin-bottom: 20px;
+        }
+
+        /* Button Back Styling */
+        .btn-back {
+            margin-top: 20px;
+        }
+        .btn-back a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .container {
+                margin-left: 0;
+                padding: 20px;
+            }
+        }
+
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <a href="/"><i class="fas fa-home"></i> Home</a>
-        <a href="/view_reports"><i class="fas fa-file-alt"></i> Reports</a>
-        <a href="/user_created_query"><i class="fas fa-database"></i> User-Created Queries</a>
+        <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+        <a href="{{ url_for('view_reports') }}"><i class="fas fa-file-alt"></i> Reports</a>
+        <a href="{{ url_for('query') }}"><i class="fas fa-database"></i> User-Created Queries</a>
     </div>
 
     <div class="main-content">
@@ -63,13 +136,17 @@
                 <div class="form-group">
                     <label for="querySelect">Select Query:</label>
                     <select class="form-control" id="querySelect" name="querySelect">
-                        <!-- Options to be dynamically populated -->
+                        {% for query in queries %}
+                        <option value="{{ query.id }}" data-query="{{ query.text }}" data-emails="{{ query.emails }}">{{ query.text }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="emailSelect">Select Emails:</label>
                     <select class="form-control" id="emailSelect" name="emailSelect" multiple>
-                        <!-- Options to be dynamically populated -->
+                        {% for email in emails %}
+                            <option value="{{ email }}">{{ email }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
@@ -80,7 +157,8 @@
                     <label for="emailInput">Update Emails:</label>
                     <input type="text" class="form-control" id="emailInput" name="emailInput" placeholder="Enter emails separated by commas">
                 </div>
-                <button type="submit" class="btn btn-primary">Update & Run Query</button>
+                <!-- Add this button inside the form in query.html -->
+                <button type="button" id="updateRunQueryBtn" class="btn btn-primary btn-block">Update & Run Query</button>
             </form>
         </div>
         <div class="table-container">
@@ -90,16 +168,20 @@
                         <th>ID</th>
                         <th>Query</th>
                         <th>Email</th>
-                        <th>Created At</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Table rows to be dynamically populated -->
+                    {% for row in all_queries %}
+                        <tr>
+                            <td>{{ row.id }}</td>
+                            <td>{{ row.query }}</td>
+                            <td>{{ row.email }}</td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <!-- Bootstrap JS and dependencies -->
@@ -109,54 +191,83 @@
     <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#queriesTable').DataTable({
-                paging: true,
-                searching: true,
-                ordering: true,
-                info: true
+            $('#queriesTable').DataTable();
+        
+            // Fetch data from Flask endpoint
+            $.getJSON('/get_queries_and_emails', function(data) {
+                // Populate query select
+                var querySelect = $('#querySelect');
+                querySelect.empty();
+                $.each(data.queries, function(index, query) {
+                    querySelect.append($('<option>', {
+                        value: query.id,
+                        text: query.text
+                    }));
+                });
+        
+                // Populate email select
+                var emailSelect = $('#emailSelect');
+                emailSelect.empty();
+                $.each(data.emails, function(index, email) {
+                    emailSelect.append($('<option>', {
+                        value: email,
+                        text: email
+                    }));
+                });
+        
+                // Populate table
+                var tableBody = $('#queriesTable tbody');
+                tableBody.empty();
+                $.each(data.all_queries, function(index, query) {
+                    tableBody.append('<tr><td>' + query.id + '</td><td>' + query.query + '</td><td>' + query.email + '</td><td>' + query.created_at + '</td></tr>');
+                });
             });
-
-            // Fetch and populate queries and emails
-            fetchQueriesAndEmails();
+        
+            // Handle query selection
+            $('#querySelect').change(function() {
+                var selectedQueryId = $(this).val();
+                $.getJSON('/get_queries_and_emails', function(data) {
+                    var query = data.queries.find(q => q.id == selectedQueryId);
+                    $('#queryText').val(query.text);
+                    $('#emailInput').val(query.email);
+                });
+            });
+        
+            // Handle email selection
+            $('#emailSelect').change(function() {
+                var selectedEmail = $(this).val();
+                $('#emailInput').val(selectedEmail);
+            });
+        
+            // Handle button click to update and run query
+            $('#updateRunQueryBtn').click(function() {
+                var queryText = $('#queryText').val();
+                var emailReceiver = $('#emailInput').val();
+        
+                $.ajax({
+                    url: '/update_run_query',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        query_text: queryText,
+                        email_receiver: emailReceiver
+                    }),
+                    success: function(response) {
+                        // Update the table with the new data
+                        var tableBody = $('#queriesTable tbody');
+                        tableBody.empty();
+                        $.each(response.data, function(index, row) {
+                            tableBody.append('<tr><td>' + row.id + '</td><td>' + row.query + '</td><td>' + row.email + '</td><td>' + row.created_at + '</td></tr>');
+                        });
+                    },
+                    error: function(error) {
+                        alert('Error running query');
+                    }
+                });
+            });
         });
-
-        function fetchQueriesAndEmails() {
-            // Make an AJAX call to fetch the distinct queries and emails from the local database
-            $.ajax({
-                url: '/get_queries_and_emails',
-                method: 'GET',
-                success: function(data) {
-                    // Populate the querySelect and emailSelect elements with the data
-                    $('#querySelect').empty();
-                    $('#emailSelect').empty();
-
-                    data.queries.forEach(function(query) {
-                        $('#querySelect').append(new Option(query.text, query.id));
-                    });
-
-                    data.emails.forEach(function(email) {
-                        $('#emailSelect').append(new Option(email, email));
-                    });
-
-                    // Populate the queriesTable with the retrieved data
-                    const tableBody = $('#queriesTable tbody');
-                    tableBody.empty();
-                    data.all_queries.forEach(function(row) {
-                        tableBody.append(`
-                            <tr>
-                                <td>${row.id}</td>
-                                <td>${row.query}</td>
-                                <td>${row.email}</td>
-                                <td>${row.created_at}</td>
-                            </tr>
-                        `);
-                    });
-                },
-                error: function(error) {
-                    console.error('Error fetching queries and emails:', error);
-                }
-            });
-        }
-    </script>
+        
+        
+    </script>    
 </body>
 </html>

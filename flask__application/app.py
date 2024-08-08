@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, jsonify
 import yagmail
 import pandas as pd
 import psycopg2
@@ -23,7 +23,7 @@ def create_tables():
         conn = psycopg2.connect(**params)
         cursor = conn.cursor()
 
-        # Create queries table with createdAt column
+        # Create tables
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS queries (
             id SERIAL PRIMARY KEY,
@@ -33,7 +33,6 @@ def create_tables():
         );
         ''')
 
-        # Create reports table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS reports (
             id SERIAL PRIMARY KEY,
@@ -45,7 +44,6 @@ def create_tables():
         );
         ''')
 
-        # Create recipients table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS recipients (
             id SERIAL PRIMARY KEY,
@@ -54,13 +52,14 @@ def create_tables():
         );
         ''')
 
-        # Create schedules table
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS schedules (
+        CREATE TABLE IF NOT EXISTS scheduled_reports (
             id SERIAL PRIMARY KEY,
-            report_id INTEGER REFERENCES reports(id),
-            schedule_time TIMESTAMPTZ NOT NULL,
-            createdAt TIMESTAMPTZ DEFAULT NOW()
+            query TEXT NOT NULL,
+            email TEXT NOT NULL,
+            day_of_week VARCHAR(20) NOT NULL,
+            hour_of_day INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         ''')
 
@@ -90,33 +89,57 @@ def submit_query():
             return redirect(url_for('view_reports'))
 
         elif action == 'user_query':
-            # Handle user-created queries here
-            pass
-        
-        elif action == 'schedule_report':
-            # Handle report scheduling here
-            pass
+            return redirect(url_for('query'))
 
-        # Existing code for processing user queries
-        if query_text and email_receiver:
-            params = config(section='remote_postgresql')
-            remote_conn = psycopg2.connect(**params)
-            remote_cursor = remote_conn.cursor()
+        elif action == 'schedule_report':
+            day = request.form.get('day')
+            hour = request.form.get('hour')
+            schedule_time = f'{day} at {hour}:00'
+
+            save_scheduled_report(query_text, email_receiver, day, hour)
+            return f'Report scheduled for {schedule_time}.'
+
+        if query_text and emails:
+            df = execute_remote_query(query_text)
+            csv_file_path = save_report_locally(df, query_text, email_receiver)
+            save_query_and_recipients(query_text, emails, csv_file_path)
+
+            executor.submit(send_emails, emails, csv_file_path)
+            return 'Emails are being sent.'
+
+        return 'Invalid action selected.'
+
+    except Exception as e:
+        logging.error(f"Error processing query: {e}")
+        return 'An error occurred while processing your request.'
+
+def save_scheduled_report(query_text, email_receiver, day, hour):
+    """ Save the scheduled report to the local database """
+    params = config(section='local_postgresql')
+    with psycopg2.connect(**params) as local_conn:
+        with local_conn.cursor() as cursor:
+            insert_schedule_query = '''
+            INSERT INTO scheduled_reports (query, email, day_of_week, hour_of_day)
+            VALUES (%s, %s, %s, %s)
+            '''
+            cursor.execute(insert_schedule_query, (query_text, email_receiver, day, hour))
+        local_conn.commit()
+
+def execute_remote_query(query_text):
+    """ Execute the query on the remote database and return the results as a DataFrame """
+    params = config(section='remote_postgresql')
+    with psycopg2.connect(**params) as remote_conn:
+        with remote_conn.cursor() as remote_cursor:
             remote_cursor.execute(query_text)
             rows = remote_cursor.fetchall()
             colnames = [desc[0] for desc in remote_cursor.description]
-            remote_cursor.close()
-            remote_conn.close()
+    return pd.DataFrame(rows, columns=colnames)
 
-            # Convert the result into a DataFrame
-            df = pd.DataFrame(rows, columns=colnames)
-
-            # Store the report in the local database
-            params = config(section='local_postgresql')
-            local_conn = psycopg2.connect(**params)
-            cursor = local_conn.cursor()
-
-            # Insert report
+def save_report_locally(df, query_text, email_receiver):
+    """ Save the report and query in the local database and return the CSV file path """
+    params = config(section='local_postgresql')
+    with psycopg2.connect(**params) as local_conn:
+        with local_conn.cursor() as cursor:
             insert_report_query = '''
             INSERT INTO reports (query, email, csv_file_path)
             VALUES (%s, %s, %s) RETURNING id
@@ -125,14 +148,10 @@ def submit_query():
             report_id = cursor.fetchone()[0]
             local_conn.commit()
 
-            # Use a temporary file for the CSV
             with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp_file:
                 csv_file_path = temp_file.name
                 df.to_csv(csv_file_path, index=False)
 
-            print(f"\nData saved to {csv_file_path}")
-
-            # Update the report with the CSV file path
             update_report_query = '''
             UPDATE reports
             SET csv_file_path = %s
@@ -140,63 +159,108 @@ def submit_query():
             '''
             cursor.execute(update_report_query, (csv_file_path, report_id))
             local_conn.commit()
+    return csv_file_path
 
-            # Insert recipients
-            insert_recipient_query = '''
-            INSERT INTO recipients (email, report_id)
-            VALUES (%s, %s)
-            '''
-            for email in emails:
-                cursor.execute(insert_recipient_query, (email, report_id))
-            local_conn.commit()
-
-            print('Report, recipients, and CSV file path stored successfully.')
-
-            # Store the query and emails in the local database with createdAt timestamp
+def save_query_and_recipients(query_text, emails, csv_file_path):
+    """ Save the query and associated recipients to the local database """
+    params = config(section='local_postgresql')
+    with psycopg2.connect(**params) as local_conn:
+        with local_conn.cursor() as cursor:
             created_at = datetime.now()
             insert_query = '''
             INSERT INTO queries (query, email, createdAt)
             VALUES (%s, %s, %s)
             '''
-            cursor.execute(insert_query, (query_text, email_receiver, created_at))
+            cursor.execute(insert_query, (query_text, ', '.join(emails), created_at))
             local_conn.commit()
 
-            # Asynchronously send emails
-            executor.submit(send_emails, emails, csv_file_path)
+            insert_recipient_query = '''
+            INSERT INTO recipients (email, report_id)
+            VALUES (%s, %s)
+            '''
+            for email in emails:
+                cursor.execute(insert_recipient_query, (email, cursor.lastrowid))
+            local_conn.commit()
 
-            cursor.close()
-            local_conn.close()
+def send_emails(emails, file_path):
+    """ Send emails with the generated report as an attachment """
+    from_address = "ayowale.olusanya@maxdrive.ai"
+    subject = "Savings Email"
+    body = "Dear Ayowole, Attached is the savings data for the month."
+    app_password = "hamz mxlf hycm vphx"
 
-            return 'Emails are being sent.'
+    yag = yagmail.SMTP(from_address, app_password)
+    for email in emails:
+        yag.send(to=email, subject=subject, contents=body, attachments=file_path)
+        print(f"Email sent successfully to {email}")
 
-        return 'Invalid action selected.'
+    os.remove(file_path)
+
+@app.route('/query')
+def query():
+    try:
+        data = get_queries_and_emails()
+        return render_template('query.html', queries=data['queries'], emails=data['emails'])
+    except Exception as e:
+        logging.error(f"Error rendering query page: {e}")
+        return 'An error occurred while rendering the page.'
+
+@app.route('/get_queries_and_emails', methods=['GET'])
+def get_queries_and_emails():
+    try:
+        params = config(section='local_postgresql')
+        with psycopg2.connect(**params) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT id, query FROM queries')
+                queries = cursor.fetchall()
+
+                cursor.execute('SELECT DISTINCT email FROM queries')
+                emails = [email[0] for email in cursor.fetchall()]
+
+        return {'queries': [{'id': q[0], 'text': q[1]} for q in queries], 'emails': emails}
+
+    except Exception as e:
+        logging.error(f"Error fetching queries and emails: {e}")
+        return {'queries': [], 'emails': []}
+
+@app.route('/update_run_query', methods=['POST'])
+def update_run_query():
+    try:
+        data = request.get_json()
+        query_text = data.get('query_text')
+        email_receiver = data.get('email_receiver')
+
+        if query_text and email_receiver:
+            df = execute_remote_query(query_text)
+            csv_file_path = save_report_locally(df, query_text, email_receiver)
+            save_query_and_recipients(query_text, email_receiver.split(','), csv_file_path)
+
+            params = config(section='local_postgresql')
+            with psycopg2.connect(**params) as local_conn:
+                with local_conn.cursor() as cursor:
+                    cursor.execute('SELECT id, query, email, createdAt FROM queries')
+                    all_queries = cursor.fetchall()
+
+            response_data = [{'id': q[0], 'query': q[1], 'email': q[2], 'created_at': q[3].strftime('%Y-%m-%d %H:%M:%S')}
+                             for q in all_queries]
+
+            return jsonify(data=response_data)
+
+        return jsonify(error='Invalid input'), 400
 
     except Exception as e:
         logging.error(f"Error processing query: {e}")
-        return 'An error occurred while processing your request.'
-    
-    
+        return jsonify(error='An error occurred while processing your request.'), 500
+
 @app.route('/view_reports')
 def view_reports():
     try:
         params = config(section='local_postgresql')
-        conn = psycopg2.connect(**params)
-        cursor = conn.cursor()
+        with psycopg2.connect(**params) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT * FROM reports')
+                reports = cursor.fetchall()
 
-        # Query to get all reports
-        query = '''
-        SELECT *
-        FROM reports;
-        '''
-        cursor.execute(query)
-        reports = cursor.fetchall()
-        print(reports)
-
-        # Close the connection
-        cursor.close()
-        conn.close()
-
-        # Render the reports.html template with data
         return render_template('reports.html', tables=[reports])
     except Exception as e:
         logging.error(f"Error fetching reports: {e}")

@@ -9,24 +9,95 @@
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css" rel="stylesheet">
     <style>
+        /* General Body Styling */
         body {
             background-color: #fffbe6; /* Light yellow background */
             padding-top: 50px;
         }
+
+        /* Sidebar Styling */
+        .sidebar {
+            height: 100vh;
+            width: 250px; /* Define a width for the sidebar */
+            background-color: #343a40;
+            padding-top: 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+        .sidebar a {
+            padding: 15px;
+            text-decoration: none;
+            font-size: 18px;
+            color: white;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #575d63;
+            color: white;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            margin-left: 250px; /* Match the sidebar width */
+            padding: 20px;
+        }
+
+
+        /* Main Container Styling */
         .container {
-            max-width: 1000px;
+            margin-left: 250px; /* Offset for the fixed sidebar */
+            max-width: calc(100% - 250px); /* Adjust to fit next to sidebar */
             background: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        h1 {
-            color: #f5b800; /* Yellow color for headings */
-            margin-bottom: 20px;
+
+        /* Form and Button Styling */
+        .form-group label {
+            color: #333; /* Darker text for labels */
+        }
+        .btn-primary {
+            background-color: #f5b800;
+            border-color: #f5b800;
+        }
+        .btn-primary:hover {
+            background-color: #d4a000;
+            border-color: #d4a000;
+        }
+        .form-control:focus {
+            border-color: #f5b800;
+            box-shadow: 0 0 0 0.2rem rgba(245, 184, 0, 0.25);
+        }
+        .form-control {
+            border-radius: 5px; /* Rounded corners */
+            border: 1px solid #ced4da; /* Light border color */
+        }
+
+        /* Table Styling */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .table td {
+            white-space: nowrap;
         }
         .table-container {
             margin-top: 20px;
         }
+        .table thead th {
+            background-color: #f5b800; /* Match header color to the theme */
+            color: white;
+        }
+
+        /* Header Styling */
+        h1 {
+            color: #f5b800; /* Yellow color for headings */
+            margin-bottom: 20px;
+        }
+
+        /* Button Back Styling */
         .btn-back {
             margin-top: 20px;
         }
@@ -34,9 +105,29 @@
             text-decoration: none;
             color: #fff;
         }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .container {
+                margin-left: 0;
+                padding: 20px;
+            }
+        }
+
     </style>
 </head>
 <body>
+    <div class="sidebar">
+        <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+        <a href="{{ url_for('view_reports') }}"><i class="fas fa-file-alt"></i> Reports</a>
+        <a href="{{ url_for('query') }}"><i class="fas fa-database"></i> User-Created Queries</a>
+    </div>       
+    
     <div class="container">
         <h1 class="text-center">Reports</h1>
         <div class="table-container">
